@@ -1,0 +1,117 @@
+name: CI - Test & Build (Django) 
+
+# Le nom visible dans l’onglet “Actions” sur GitHub 
+
+on: 
+  push: 
+    branches: ["main", "develop"]     # CI pour push 
+  pull_request:
+    branches: ["main", "develop"]     # CI pour PR 
+
+jobs: 
+  build-and-test: 
+    runs-on: ubuntu-latest            # Machine Linux GitHub Actions 
+
+    steps: 
+
+    # ------------------------------------------------------- 
+    # Étape 1 — Récupération du code du repository 
+    # ------------------------------------------------------- 
+    - name: Checkout du repository 
+      uses: actions/checkout@v4
+
+    # ------------------------------------------------------- 
+    # Étape 2 — Installer Python 
+    # ------------------------------------------------------- 
+    - name: Installer Python 
+      uses: actions/setup-python@v5 
+      with: 
+        python-version: "3.11"        # Recommandé pour Django 4.2 / 5.x 
+
+    # ------------------------------------------------------- 
+    # Étape 3 — Installation des dépendances Python 
+    # ------------------------------------------------------- 
+    - name: Installer dépendances Python 
+      run: | 
+        python -m pip install --upgrade pip 
+        # CORRECTION ICI: Installez 'pytest' et 'flake8' pour les étapes suivantes.
+        # Vous devriez idéalement les mettre dans requirements.txt, mais 
+        # les installer explicitement ici garantit leur disponibilité.
+        pip install -r requirements.txt 
+        pip install pytest flake8 mypy django-environ # Ajout des outils de test/analyse
+        
+    # ------------------------------------------------------- 
+    # Étape 4 — Générer configuration Django (.env) 
+    # ------------------------------------------------------- 
+    - name: Créer .env pour les tests 
+      run: | 
+        # Crée un fichier .env qui sera utilisé par django-environ ou settings.py
+        echo "DEBUG=True" > .env 
+        echo "SECRET_KEY=test-secret-key" >> .env 
+        echo "DATABASE_URL=sqlite:///db/test.sqlite3" >> .env 
+        # Adapter selon ton settings.py ou django-environ 
+
+    # ------------------------------------------------------- 
+    # Étape 5 — Base SQLite pour tests 
+    # ------------------------------------------------------- 
+    - name: Préparer base SQLite 
+      run: | 
+        mkdir -p db 
+        touch db/test.sqlite3 
+
+    # ------------------------------------------------------- 
+    # Étape 6 — Migrations 
+    # ------------------------------------------------------- 
+    - name: Appliquer migrations 
+      run: python manage.py migrate --noinput 
+
+    # ------------------------------------------------------- 
+    # Étape 7 — Collecte des fichiers statiques 
+    # ------------------------------------------------------- 
+    - name: Collect static files 
+      run: python manage.py collectstatic --noinput 
+
+    # ------------------------------------------------------- 
+    # Étape 8 — Lancer les tests Pytest
+    # ------------------------------------------------------- 
+    - name: Lancer tests Pytest 
+      run: pytest -v --disable-warnings --maxfail=1 
+
+    # ------------------------------------------------------- 
+    # Étape 9 (optionnelle) — Générer un build ou une analyse 
+    # ------------------------------------------------------- 
+
+    #   Linting Python (Flake8) 
+    - name: Analyse du code (Flake8) 
+      run: flake8 . 
+      continue-on-error: true # Permet au workflow de continuer même si le linting échoue
+
+    #   Analyse statique (mypy) 
+    - name: Analyse statique (mypy) 
+      run: mypy . 
+      continue-on-error: true # Permet au workflow de continuer même si l'analyse statique échoue
+
+    #   Build Frontend (npm) si projet Django + React/Vue 
+    - name: Setup Node.js (build frontend) 
+      uses: actions/setup-node@v4 
+      with: 
+        node-version: "20" 
+      continue-on-error: true 
+
+    - name: Installer dépendances npm 
+      run: | 
+        if [ -f package.json ]; then 
+          npm ci 
+        else 
+          echo "Pas de frontend — skip npm" 
+        fi 
+      continue-on-error: true 
+
+    - name: Build Frontend 
+      run: | 
+        if [ -f package.json ]; then 
+          npm run build 
+        else 
+          echo "Pas de build frontend à exécuter" 
+        fi 
+      continue-on-error: true
