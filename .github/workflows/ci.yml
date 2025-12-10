@@ -18,13 +18,13 @@ jobs:
     # Étape 1 — Récupération du code du repository 
     # ------------------------------------------------------- 
     - name: Checkout du repository 
-      uses: actions/checkout@v4
+      uses:  "actions/checkout@v4"
 
     # ------------------------------------------------------- 
     # Étape 2 — Installer Python 
     # ------------------------------------------------------- 
     - name: Installer Python 
-      uses: actions/setup-python@v5 
+      uses: "actions/setup-python@v5" 
       with: 
         python-version: "3.11"        # Recommandé pour Django 4.2 / 5.x 
 
