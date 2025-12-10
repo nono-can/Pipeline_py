@@ -1,0 +1,9 @@
+# Environnement virtuel Python
+venv/
+*.pyc
+__pycache__/
+
+# Fichiers spécifiques au projet Django
+*.sqlite3
+/db/
+.env
